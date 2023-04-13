@@ -1,0 +1,199 @@
+---
+title: "Data Visualization"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+# First Steps
+```{r}
+library(tidyverse)
+library(palmerpenguins)
+library(ggthemes)
+```
+Research Question: Do penguins with long flippers weigh more or less than panguins with shorter flippers?
+
+## The `penguins` data frame
+-   *data frame*: a rectangular collection of variables (columns) and observations (rows)
+-   *variable*: measurable quantity,quality, or property
+-   *value*: the measurement reported for a variable at a given point of observations
+-   *observation*: measurement made under similar conditions (a collection of variables measured)
+-   *Tabular data*: set of values associated with a variable and an observation
+-   *tibble*: tidyverse variant of data frames
+```{r penguins-frame}
+penguins # view data
+glimpse(penguins) # view variable headings and first few observations
+View(penguins) # view entire table
+?penguins # documentation for penguins table
+```
+
+## Creating a ggplot
+First, we create a frame that will house the context for our plot
+```{r first-step}
+ggplot(data = penguins) # nothing designated to plot; just tells what dataset will be referenced
+```
+Then, we'll define the relations we're looking at by determining which variables will be mapped to which axes
+```{r second-step}
+ggplot(
+  data = penguins,
+  mapping  = aes(x = flipper_length_mm, y = body_mass_g)
+)# now we've added a mapping defined by the aes() function which tells us which
+# variables will go with which axes
+
+```
+We can start building the visualization by mapping coordinate pairs of measurements on our axes
+```{r third-step}
+ggplot(data = penguins,
+       mapping = aes(x=flipper_length_mm, y = body_mass_g)
+       ) +
+  geom_point() 
+# we have told it to plot the data as points with coordinates of
+# (flipper_length_mm, body_mass_g)
+```
+Let's add some more detail - a third variable mapped on as colors, to see if a relationship can be observed based on penguin species.
+```{r fourth-step}
+ggplot(
+  data = penguins,
+  mapping = aes(x = flipper_length_mm, y = body_mass_g, color = species)
+) +
+  geom_point()
+```
+We can now start developing the trend line(s) to make this easier to interpret
+```{r fifth-step}
+ggplot(
+  data = penguins,
+  mapping = aes(x = flipper_length_mm, y = body_mass_g, color = species)
+) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+This plot has a line for each species; if we want a single line, we need to move the species variable to a local assignment on the points, rather than a global assignment in the aesthetics.
+```{r semifinal-plot}
+ggplot(
+  data = penguins,
+  mapping = aes(x = flipper_length_mm, y = body_mass_g)
+) +
+  geom_point(mapping = aes(color = species)) +
+  geom_smooth(method = "lm")
+```
+to get the final state, we need shapes for each group
+```{r semifinal-plot-redux}
+ggplot(
+  data = penguins,
+  mapping = aes(x = flipper_length_mm, y = body_mass_g)
+) +
+  geom_point(mapping = aes(color = species, shape = species)) +
+  geom_smooth(method = "lm")
+```
+Let's fix the labelling with lab() and fix it up for colorblind viewers
+## Final Goal
+```{r final-plot}
+ggplot(
+  data = penguins,
+  mapping = aes(x = flipper_length_mm, y = body_mass_g)
+) +
+  geom_point(mapping = aes(color = species)) +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Body mass and flipper length",
+    subtitle = "Dimensions for Adelie, Chinstrap, and Gentoo Penguins",
+    x = "Flipper length (mm)",
+    y = "Body mass (g)",
+    color = "Species", shape = "Species"
+    ) +
+  scale_color_colorblind()
+```
+
+
+
+### Exercises
+#### 1 How many rows are in penguins? How many columns?
+```{r solution-1}
+paste("Number of rows:",
+      nrow(penguins),
+      "Number of columns:",
+      ncol(penguins), 
+      sep = "\n") |>
+  cat()
+```
+#### 2 What does the `bill_depth_mm` variable in `penguins` data frame describe? Read the help for `?penguins` to find out.
+The help documentation isn't precisely clear, but I would imagine that, where bill length is the measurement of the bill from tip to head, depth is the measure of the widest point along the beak from top beak to bottom beak.
+
+#### 3 Make a scatterplot of `bill_depth_mm` vs. `bill_length_mm`. That is, make a scatterplot with `bill_depth_mm` on the y-axis and `bill_length_mm` on the x-axis. Describe the relationship between these two variables.
+
+Without accounting for species, the data seems to have little/no correlation. However, there appear to be clusters, which, upon mapping species to color, demonstrates clusters in values based around species.
+
+```{r bill-depth-length-plot}
+ggplot(penguins,
+       mapping = aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point(mapping = aes(color = species))
+```
+#### 4 What happens if you make a scatterplot of `species` vs. `bill_depth_mm`? What might be a better choice of geom?
+
+I went with a boxplot because it felt more intuitive relative to the variables chosen.
+```{r bill-depth-species-plot}
+ggplot(data = penguins,
+       mapping = aes(x = species, y = bill_depth_mm)) +
+  geom_boxplot()
+```
+#### 5 Why does the code give an error, and how would you fix it?
+the code `ggplot(data = penguins) + geom_point()` doesn't have mappings assigned.
+I would assign two variables to this position.
+
+#### 6 What does the `na.rm` argument do in `geom_point`? What is the default value of the argument? Create a scatterplot where you successfully use this argument set to true.
+The argument defaults to FALSE, which print a warning when missing values are identified and removed.
+TRUE suppresses the warning.
+```{r plot-narm}
+ggplot(penguins,
+       mapping = aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point(mapping = aes(color = species), na.rm = TRUE)
+```
+#### 7 Add the following caption to the plot you made in the previous exercise.
+```{r captioned-plot}
+ggplot(penguins,
+       mapping = aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point(mapping = aes(color = species), na.rm = TRUE) +
+  labs(caption = "Data come from the palmerpenguins package.")
+```
+#### 8 Recreate the visualization. What aesthetic should `bill_depth_mm` be mapped to? And should it be mapped at the global level or the geom level?
+
+```{r eight-plot}
+ggplot(penguins,
+       mapping = aes(y = body_mass_g, x = flipper_length_mm)) +
+  geom_point(mapping = aes(color = bill_depth_mm), na.rm = TRUE) +
+  geom_smooth()
+```
+
+#### 9 Run this code in your head and predict what the output will look like. Then, run the code in R and check your predictions.
+
+It produced pretty much what I expected, except that I forgot the color = island is at the global level, and so would plot a new trend line for each group/island
+```{r nine-plot}
+ggplot(
+  data = penguins,
+  mapping = aes(x = flipper_length_mm, y = body_mass_g, color = island)
+) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+```
+#### 10 Will these two graphs look different? Why/Why not?
+```{r}
+x <-ggplot(
+  data = penguins,
+  mapping = aes(x = flipper_length_mm, y = body_mass_g)
+) +
+  geom_point() +
+  geom_smooth()
+```
+
+```{r}
+y <- ggplot() +
+  geom_point(
+    data = penguins,
+    mapping = aes(x = flipper_length_mm, y = body_mass_g)
+  ) +
+  geom_smooth(
+    data = penguins,
+    mapping = aes(x = flipper_length_mm, y = body_mass_g)
+  )
+```
+
+
