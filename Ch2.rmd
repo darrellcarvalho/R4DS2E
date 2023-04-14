@@ -256,4 +256,3 @@ ggplot(penguins, aes(x = species)) +
 ```
 #### 3 What does the bins argument in geom_histogram() do?
 #### 4 Make a histogram of the `carat` variable in the `diamonds` dataset that is available when you load the tidyverse package. Experiment with different binwidths. What binwidth reveals the most interesting patterns?
-hi
