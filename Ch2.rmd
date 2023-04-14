@@ -1,6 +1,9 @@
 ---
 title: "Data Visualization"
-output: html_notebook
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
 editor_options: 
   chunk_output_type: inline
 ---
@@ -195,5 +198,48 @@ y <- ggplot() +
     mapping = aes(x = flipper_length_mm, y = body_mass_g)
   )
 ```
+The two tables will not look different, as they are (effectively) different implementations of the same instructions.
 
+The first passes the mappings globally, and then calls the two geometries using the mappings
+The second applies the mappings locally, but they are the same mappings for each geometry, so they are functionally the same.
 
+Given this, the former would probably be "better" code, as it is more concise, and is likely also more readable.
+
+## ggplot2 calls
+
+- Pro-tip from authors: " Typically, the first one or two arguments to a function are so important that you should know them by heart."
+  - for ggplot this is `data` and `mapping`
+  - remembering this allows us to be more concise in our code
+```{r concise-plot}
+ggplot(penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(na.rm = TRUE)
+```
+## Visualizing Distributions
+- The visualization you use depends on the variable type you're displaying
+  - Categorical Variables:
+    -   takes only one value from a (relatively) small set of discrete values
+    -   often displayed with barplots
+```{r barplot}
+ggplot(penguins, aes(x = species)) +
+  geom_bar()
+```
+      -   when the variables have non-orered levels, arrange the bars based on their frequencies by tansforming the variable to a factor and reordering the levels
+```{r freq-barplot}
+ggplot(penguins, aes(x = fct_infreq(species))) +
+  geom_bar()
+```
+  - Numerical variables:
+    -   take a wide range of numerical values which can be added, subtracted, or averaged while retaining meaning/coherence
+    - may be discrete or continuous
+    - there are a wide variety of displays; the most common univariate display is the histogram
+```{r histogram}
+ggplot(penguins, aes(x = body_mass_g)) +
+  geom_histogram(binwidth = 200, na.rm = TRUE)
+```
+    - a density plot is also a sensisble univariate visualization
+```{r density-plot}
+ggplot(penguins, aes(x = body_mass_g)) +
+  geom_density()
+```
+    
+  
