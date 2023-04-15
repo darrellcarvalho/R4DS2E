@@ -1,0 +1,35 @@
+---
+title: "CH3 Exercises"
+author: "Darrell A Carvalho"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+# Exercises
+## 1 Why does this code not work?
+```{r}
+my_variable <- 10
+my_varıable
+```
+The code is not functional because the second line doesn't use i, it uses ı
+
+## 2 Tweak each of the following R commands so that they run correctly:
+```{r}
+library(tidyverse) # fix spelling to library(tidyverse)
+
+ggplot(data = mpg, aes(x = displ, y = hwy)) + # fix spelling to data
+  geom_point() + # fix spelling to mapping, add comma
+  geom_smooth(method = "lm") # fix syntax
+```
+## 3 Press Alt + Shift + K. What happens? How can you get to the same place using the menus?
+It opens the shortcut cheat sheet, also available from Help>Keyboard Shortcuts Help
+
+## 4 Let's revise an exercise from Section 2.6. Run the following lines of code. Which of the two plots saved as `mpg-plot.png`? Why?
+```{r}
+my_bar_plot <- ggplot(mpg, aes(x = class)) +
+  geom_bar()
+my_scatter_plot <- ggplot(mpg, aes(x = cty, y = hwy)) +
+  geom_point()
+ggsave(filename = "mpg-plot.png", plot = my_bar_plot)
+```
+my_bar_plot will be saved, because it is assigned to a variable and that variable is called in the function; it is only when no variable is called with a plot assigned that ggsave sill save the most recently created plot.
