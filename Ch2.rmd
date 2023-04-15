@@ -214,6 +214,7 @@ Given this, the former would probably be "better" code, as it is more concise, a
 ggplot(penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
   geom_point(na.rm = TRUE)
 ```
+
 ## Visualizing Distributions
 - The visualization you use depends on the variable type you're displaying
   - Categorical Variables:
@@ -270,3 +271,129 @@ ggplot(diamonds, aes(x = carat)) +
   geom_histogram(binwidth = 0.065)
 ```
 
+## Visualizing relationships
+- relationship requires two (or more) variables
+- comparing a numerical and a categorical variable often works by using side-by-side box plots.
+```{r side-by-side}
+ggplot(penguins, aes(x = species, y = body_mass_g)) +
+  geom_boxplot()
+```
+ - an alternative way to compare is using overlapping density plots
+```{r overlapping-density}
+ggplot(penguins, aes(x = body_mass_g, color = species)) +
+  geom_density(linewidth = 0.75)
+```
+- in the following plot, we **set** the alpha to 0.5 (half transparent)
+```{r overlapping-density-alpha}
+ggplot(penguins, aes(x = body_mass_g, color = species, fill = species)) +
+  geom_density(alpha = 0.5)
+```
+
+- terminology:
+  -   **mapping** to aesthetic: visual attribute varies with value of variable
+  -   **set** the value of the aesthetic: fixed, uniform aesthetic value.
+
+- Two categorical variables can be compared with stacked bar plots
+  - First plot shows frequencies on each island; it shows a count, but not a sense of percentage
+```{r stacked-bar}
+ggplot(penguins, aes(x = island, fill = species)) +
+  geom_bar()
+```
+  - second plot shows relative frequency
+```{r relative-stacked-bar}
+ggplot(penguins, aes(x = island, fill = species)) +
+  geom_bar(position = "fill")
+```
+- two numerical variables are most commonly visualized using the scatter plot
+```{r back-to-scatter}
+ggplot(penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point()
+```
+- Three or more variables can be added by adding more aesthetics or using facets
+```{r four-variables}
+ggplot(penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species, shape = island))
+# This plot has four variables, but the more variables mapped, the harder it gets to interpret
+```
+```{r four-variables-faceted}
+ggplot(penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species, shape = species)) +
+  facet_wrap(~island)
+```
+### Exercises
+#### 1 The `mpg` data frame that is bundled with the ggplot2 package contains 234 observations collected by the US Environmental Protection Agency on 38 car models. Which variables in `mpg` are categorical? Which variables are numerical? (Hint: Type `?mpg` to read the documentation for the dataset.) How can you see this information when you run `mpg`?
+```{r}
+glimpse(mpg)
+?mpg
+```
+Manufacturer, model, transmission, drive, fuel type, and class are all categorical.
+year, cyl, cty, hwy, and displ are numeric.
+I found these by using glimpse() which labels the variable's data type.
+#### 2 Make a scatterplot of `hwy` vs. `displ` using the `mpg` data frame. Next, map a third, numerical variable to `color`, then `size`, then both `color` and `size`, then `shape`. How do these aesthetics behave differently for categorical vs. numerical variables?
+When these aesthetics are applied to a numeric, they'll scale in in a manner where their color is a function of a change in quantity, whereas if they are mapped to a categorical variable, their assignment is meaningless aside from designating a particular value/class.
+
+```{r mpg-plot}
+ggplot(mpg, aes(x = hwy, y = displ, size = displ)) +
+  geom_point()
+```
+
+#### 3 In the scatterplot of `hwy` vs. `displ`, what happens if you map a third variable to `linewidth`?
+```{r}
+ggplot(mpg, aes(x = hwy, y = displ, linewidth = cyl)) +
+  geom_point()
+```
+Nothing appears to happen, as points don't have a line
+#### 4 What happens if you map the same variable to multiple aesthetics?
+It works, but creates redundancy by communicating the same information twice (i.e. across two different aesthetics); in some cases it might work for emphasis, but more likely it will create visual clutter and either distort or otherwise inhibit interpretation.
+
+#### 5 Make a scatterplot of `bill_depth_mm` vs. `bill_length_mm` and color the points by `species`. What does adding coloring by species reveal about the relationship between these two variables? What about faceting by species?
+Coloring by species will make the clusters more apparent.
+Faceting by species also makes the clusters apparent, but doesn't show the areas of overlap; this can make interpreting by species much easier.
+
+```{r}
+ggplot(penguins, aes(x = bill_depth_mm, y = bill_length_mm)) +
+  geom_point() +
+  facet_wrap(~species)
+```
+
+
+#### 6 Why does the following yield two separate legends? How would you fix it to combine the two legends?
+by using the function`labs(color = "Species")`, we set it up to create a legend for colors separately titled from the shapes. We can either remove the labs function, or add a `shape = "Species"` argument to the labs call
+```{r}
+ggplot(
+  data = penguins,
+  mapping = aes(
+    x = bill_length_mm, y = bill_depth_mm, 
+    color = species, shape = species
+  )
+) +
+  geom_point() +
+  labs(color = "Species", shape = "Species")
+```
+#### 7 Create the two following stacked bar plots. Which question can you answer with the first one? Which question can you answer with the second one?
+The first one lets us know what species make up which portion of the population on each island.
+The second one shows us which island each of the species is present on, and how much of their population is represented in the given island's subpopulation.
+```{r}
+ggplot(penguins, aes(x = island, fill = species)) +
+  geom_bar(position = "fill")
+ggplot(penguins, aes(x = species, fill = island)) +
+  geom_bar(position = "fill")
+```
+
+
+## Saving your plots
+- save plots with `ggsave()`, which saves the most recently created plot to disk
+- specify `width` and `height` to have control over dimensions of your plot
+### Exercise
+#### 1 Run the following lines of code. Which of the two plots is saved as `mpg-plot.png`? Why?
+```{r}
+ggplot(mpg, aes(x = class)) +
+  geom_bar()
+ggplot(mpg, aes(x = cty, y = hwy)) +
+  geom_point()
+ggsave("mpg-plot.png")
+```
+The second one will be saved, as it is the most recently plotted, and `ggsave()` saves the most recent one.
+
+#### 2 What do you need to change in the code above to save the plot as a PDF instead of a PNG? How would you find out what types of image files would work in `ggsave()`?
+You would change the 'png' argument to 'pdf', as detailed in `?ggsave()`.
