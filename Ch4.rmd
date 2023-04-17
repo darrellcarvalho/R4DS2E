@@ -1,0 +1,203 @@
+---
+title: "Chapter 4 Notes and Exercises"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: inline
+---
+## First Steps
+```{r prerequisites}
+library(nycflights13)
+library(tidyverse)
+```
+
+
+## Introduction
+- This chapter focuses on data transformation, often with *dplyr*
+- Focuses on working on rows and columns of data frames, followed by instructions on use of the pipe to combine verbs.
+- Teaches how to work with groups
+### nycflights13 - the dataset
+- we'll be using `nycflights13::flights`
+```{r}
+flights
+glimpse(flights) # glimpse shows all columns and their data types
+```
+### dplyr basics
+- dplyr verbs share the common features:
+  1. The first argument is always a data frame/tibble
+  2. The subsequent argumentst ypically describe which columns to operate on, using the variable names
+  3. The output is always a new data frame/tibble
+- dplyr verbs are designed to do one thing and one thing well.
+  - Complex tasks are completed by combining verbs with pipe operations.
+- dplyr verbs belong to four groups, based on what they operate on:
+  - rows
+  - columns
+  - groups
+  - tables
+
+## Rows
+### `filter()`
+- keep rows based on column values
+- first argument is data frame; second and further arguments are conditions
+```{r long-flight-delays}
+## The following code uses filter to find flights with delays over 2 hours
+flights |>
+  filter(dep_delay > 120)
+```
+```{r new-year-flights}
+flights |> 
+  filter(month == 1 & day == 1)
+```
+```{r jan-feb-flights}
+flights |> 
+  filter(month == 1 | month ==2)
+```
+- an alternative to combining `|` and `==` (or and equals) is using `%in%`
+```{r flights-in-jan-feb}
+flights |> 
+  filter(month %in% c(1, 2))
+```
+- *dplyr* verbs, including `filter()`, never modify their inputs. To preserve results, assign them to variables
+```{r save-jan1}
+jan1 <- flights |> 
+  filter(month == 1 & day == 1)
+```
+
+### Common mistakes
+- common mistakes include:
+  - using `=` instead of `==` for equality tests
+  - forgetting to include column names in all sides of the `|` tests
+
+### `arrange()`
+- `arrange()` sorts rows based on column values, sorting and then sub sorting by columns fed into the second and subsequent arguments.
+```{r flight-sort}
+flights |> 
+  arrange(year, month, day, dep_time)
+```
+  - `desc()` can be used to sort by descending order rather than the default ascending order
+```{r flight-desc}
+flights |> 
+  arrange(desc(dep_delay))
+```
+
+### `distinct()`
+- `distinct()` finds distinct rows, and distinct combinations of rows across columns
+```{r remove-duplicates}
+flights |> 
+  distinct()
+```
+```{r origin-destination-pairs}
+flights |> 
+  distinct(origin,dest)
+```
+- use `.keep_all = TRUE` to keep all columns in the result
+```{r origin-destination-all-columns}
+flights |> 
+  distinct(origin, dest, .keep_all = TRUE)
+```
+- `distinct()` takes the first occurrance and discards the rest; if you want to know a count, you'll have to use `count()` instead
+```{r count-demo}
+flights |> 
+  count(origin, dest, sort = TRUE)
+```
+
+### Exercises
+#### 1 Use the text below to solve the problem
+In a single pipeline, find all flights that meet each of the following conditions:
+
+    Had an arrival delay of two or more hours
+    Flew to Houston (IAH or HOU)
+    Were operated by United, American, or Delta
+    Departed in summer (July, August, and September)
+    Arrived more than two hours late, but didn’t leave late
+    Were delayed by at least an hour, but made up over 30 minutes in flight
+```{r}
+flights |> 
+  filter(dest %in% c('IAH', 'HOU'),
+         carrier %in% c('UA', 'AA', 'DL'),
+         month %in% c(7, 8, 9),
+         (arr_delay >= 120 & dep_delay <= 0) | 
+           (dep_delay >= 60 & (dep_delay - arr_delay > 30))
+         )
+```
+
+#### 2 Sort `flights` to find the flights with longest departure delays. Find the flights that left earliest in the morning.
+```{r long-delays}
+flights |> 
+  arrange(desc(dep_delay))
+```
+
+```{r earliest-departures}
+flights |> 
+  arrange(hour, minute)
+```
+
+#### 3 Sort flights to find the fastest flights. (Hint: Try including a math calculation inside of your function.)
+```{r fastest-flight}
+flights |> 
+  arrange(desc(distance / air_time))
+```
+
+#### 4 Was there a flight on every day of 2013?
+```{r}
+flights |> 
+  filter(year == 2013) |> 
+  distinct(month, day) |> 
+  arrange(month)
+```
+
+#### 5 Which flights traveled the farthest distance? Which traveled the least distance?
+```{r farthest-distance}
+flights |> 
+  arrange(desc(distance))
+```
+```{r}
+flights |> 
+  arrange(distance)
+```
+
+#### 6 Does it matter what order you used `filter()` and `arrange()` if you’re using both? Why/why not? Think about the results and how much work the functions would have to do.
+it is better to arrange first, and then filter afterwards, because otherwise the filter has to work through the unsorted data, which is significantly slower. in the demonstrations below, arrange -> filter is 2.98 times faster than filter -> arrange
+
+```{r}
+start.time <- Sys.time()
+
+flights |> 
+  filter(distance >=30) |> 
+  arrange(desc(arr_time))
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+```
+
+```{r}
+start.time <- Sys.time()
+
+flights |> 
+  arrange(desc(arr_time)) |> 
+  filter(distance >=30)
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+```
+
+## Columns
+### `mutate()`
+### `select()`
+### `rename()`
+### `relocate()`
+### `Exercises()`
+
+## The pipe
+## Groups
+### `group_by()`
+### `summarize()`
+### The `slice_` functions
+### Grouping by multiple variables
+### Ungrouping
+### `.by`
+### Exercises
+## Case study

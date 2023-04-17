@@ -1,5 +1,5 @@
 ---
-title: "Data Visualization"
+title: "Chapter 2 Notes and Exercises"
 output:
   html_notebook:
     toc: true
@@ -7,7 +7,7 @@ output:
 editor_options: 
   chunk_output_type: inline
 ---
-# First Steps
+## First Steps
 ```{r}
 library(tidyverse)
 library(palmerpenguins)
