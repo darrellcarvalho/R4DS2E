@@ -314,15 +314,225 @@ flights |>
   select(tailnum) |> 
   arrange(arr_delay)
 ```
-The code doesn't work because the select drops the other columns, including arr_delay; the error means that the non-existant column cannot be found in the new, smaller data frame.
+The code doesn't work because the select drops the other columns, including arr_delay; the error means that the non-existent column cannot be found in the new, smaller data frame.
 
 ## The pipe
+- pipe makes verb combination much easier:
+```{r fast-flights-houston}
+flights |> 
+  filter(dest == "IAH") |> 
+  mutate(speed = distance / air_time * 60) |> 
+  select(year:day, dep_time, carrier, flight, speed) |> 
+  arrange(desc(speed))
+```
+- pipes also (arguably) make code more readable
+
+
 ## Groups
+- three key tools for working with groups:
+  - `group_by()`
+  - `summarize()`
+  - `slice_` functions
 ### `group_by()`
+- `group_by()` divides dataset into groups:
+```{r flight-month}
+flights |> 
+  group_by(month)
+```
+- subsequent verbs function off the grouping variable
 ### `summarize()`
+- reduces data frame to summary statistics for group(s)
+```{r month_summary}
+flights |> 
+  group_by(month) |> 
+  summarize(
+    avg_delay = mean(dep_delay, na.rm = TRUE)
+  )
+# note the na.rm = TRUE argument is necessary, or else NA values will prevent meaningful means from being computed, replacing them with NA
+```
+- multiple summaries can be created in a single `summarize()` call
+```{r mean-and-count}
+flights |> 
+  group_by(month) |> 
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE),
+    count = n()
+  )
+```
+
 ### The `slice_` functions
+- five key `slice_` functions:
+  1. `slice_head(n)` takes the first **n**th row(s) from each group
+  2. `slice_tail(n)` takes the last **n**th row(s) from each group
+  3. `slice_min(x, n)` takes the smallest **n**th row(s) in column x per group
+  4. `slice_max(x, n)` takes the largest **n**th row(s) in column x per group
+  5. `slice_sample(n)` takes **n** random row(s) from each group
+- n can be any number to vary the number of row(s) selected
+- you can also use `prop = ` to select proportions (i.e. `0.1` for 10% of rows in each group)
+- `slice_min()` and `slice_max()` keep ties unless you use the argument `with_ties = FALSE`
+
+```{r most-delayed}
+flights |> 
+  group_by(dest) |> 
+  slice_max(arr_delay, n = 1) |> 
+  relocate(dest)
+```
+
 ### Grouping by multiple variables
+- Grouping can be done on more than one variable
+```{r group_by_date}
+daily <- flights |> 
+  group_by(year, month, day)
+daily
+```
+- when you summarize a tibble grouped by multiples, each summary peals off the last group
+  - you can avoid the warning by explicitly enabling this functionality with `.groups = "drop_last"`
+  - you can keep all groups by using `.groups = "keep"`
+  - you can drop all groups by using `.groups = "drop"`
+```{r}
+daily |> 
+  summarize(n = n())
+
+daily |> 
+  summarize(n = n(), .groups = "drop")
+
+daily |> 
+  summarize(n = n(), .groups = "keep")
+```
+
 ### Ungrouping
+- if you want to ungroup without using `summarize()`, use `ungroup()`
+```{r daily-ungroup}
+daily |> 
+  ungroup()
+```
+
 ### `.by`
+- the `.by` argument is experimental per-operation grouping.
+```{r}
+flights |> 
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE),
+    n = n(),
+    .by = month
+  )
+```
+- you can also group by multiple variables
+```{r}
+flights |> 
+  summarize(
+    delay = mean(dep_delay, na.rm = TRUE),
+    n = n(),
+    .by = c(origin, dest)
+  )
+```
+- `.by` works with all verbs
+  - doesn't require the use of `.groups` to suppress warnings
+  - doesn't require use of `ungroup()` to ungroup when done
+
 ### Exercises
+#### 1 Which carrier has the worst average delays? Challenge: can you disentangle the effects of bad airports vs. bad carriers? Why/why not? (Hint: think about flights |> group_by(carrier, dest) |> summarize(n()))
+```{r}
+flights |> 
+  group_by(carrier) |> 
+  summarize(delay = mean(dep_delay, na.rm = TRUE)) |> 
+  arrange(desc(delay))
+```
+There are a few ways to approach the problem, but given the diversity of airports (how many carriers they serve, how big the airports are) and the airlines, any analysis would be suspect without existing domain knowledge.
+
+
+#### 2 Find the flights that are most delayed upon departure from each destination.
+```{r}
+flights |>
+  group_by(origin) |> 
+  slice_max(dep_delay, n = 1) |> 
+  relocate(dep_delay)
+```
+
+
+#### 3 How do delays vary over the course of the day. Illustrate your answer with a plot.
+```{r}
+delays <- flights |> 
+  group_by(hour) |> 
+  summarize(delay = mean(dep_delay, na.rm = TRUE))
+
+ggplot(delays, aes(x = hour, y = delay)) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+```
+
+
+#### 4 What happens if you supply a negative n to slice_min() and friends?`
+"A negative value of n or prop will be subtracted from the group size"
+
+
+#### 5 Explain what count() does in terms of the dplyr verbs you just learned. What does the sort argument to count() do?
+"count() lets you quickly count the unique values of one or more variables"
+ - it acts as a shortcut function to the linked verbs 
+ `group_by() |> summarize(n = n())`
+ - the `sort` argument sorts the groups' values from largest to smallest if TRUE
+
+#### 6
+Suppose we have the following tiny data frame:
+```{r}
+df <- tibble(
+  x = 1:5,
+  y = c("a", "b", "a", "a", "b"),
+  z = c("K", "K", "L", "L", "K")
+)
+```
+
+  a . Write down what you think the output will look like, then check if you were correct, and describe what `group_by()` does.
+  The output will be the same, except it will be grouped.
+```{r}
+df |>
+  group_by(y)
+```
+
+  b. Write down what you think the output will look like, then check if you were correct, and describe what `arrange()` does. Also comment on how it’s different from the `group_by()` in part (a)?
+  The output will be sorted alphabetically on y, but will not be grouped
+```{r}
+df |>
+  arrange(y)
+```
+
+  c. Write down what you think the output will look like, then check if you were correct, and describe what the pipeline does.
+  The output will be a tibble grouped on y, returning the mean x for each value y;
+  the pipe passes df to group-by, then passes it to summarize().
+```{r}
+df |>
+  group_by(y) |>
+  summarize(mean_x = mean(x))
+```
+
+  d. Write down what you think the output will look like, then check if you were correct, and describe what the pipeline does. Then, comment on what the message says.
+  The output will will have more rows, as it will provide the mean x for each unique combination group of y, z.
+  As it does not have the `.group` argument set to "keep", it prints out a warning that the z grouping is dropped in the output.
+```{r}
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x))
+```
+
+  e. Write down what you think the output will look like, then check if you were correct, and describe what the pipeline does. How is the output different from the one in part (d).
+  The following will have the same results as above, except all groupings will be dropped from the output.
+```{r}
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x), .groups = "drop")
+```
+
+  f. Write down what you think the outputs will look like, then check if you were correct, and describe what each pipeline does. How are the outputs of the two pipelines different?
+  The first pipeline will give the mean x for each combo y,z.
+  The second pipeline will do likewise, but add it as a column, rather than only returning the summarized column and the called values - as such, all values of x in the x column will remain visible, and there will be duplicate entries for the combo a,L accross all rows.
+```{r}
+df |>
+  group_by(y, z) |>
+  summarize(mean_x = mean(x))
+
+df |>
+  group_by(y, z) |>
+  mutate(mean_x = mean(x))
+```
+
 ## Case study
