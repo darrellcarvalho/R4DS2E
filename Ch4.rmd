@@ -186,10 +186,135 @@ time.taken
 
 ## Columns
 ### `mutate()`
+- creates new columns from existing columns
+```{r gain-and-speed}
+flights |> 
+  mutate(
+    gain = dep_delay - arr_delay,
+    speed = distance / air_time * 60
+  )
+```
+- by default, new columns append to the right
+  - you can place them at different locations using the argument `.before` or `.after`in the mutate call
+- you can choose to only keep certain columns on creation by using the `.keep` argument
+  - `.keep = "used"` keeps only those columns used in, or created by, the mutate function call
+```{r used}
+flights |> 
+  mutate(
+    gain = dep_delay - arr_delay,
+    hours = air_time / 60,
+    gain_per_hour = gain / hours,
+    .keep = "used"
+  )
+```
+  
 ### `select()`
+- changes which columns are present, retaining only the selected
+  - select columns by name:
+```{r name-select}
+flights |> 
+  select(year, month, day)
+```
+  - select between two columns (inclusive):
+```{r select-between}
+flights |> 
+  select(year:day)
+```
+  - select all except excluded range:
+```{r excluded-range}
+flights |> 
+  select(!year:day)
+```
+  - select only character columns:
+```{r character-columns}
+flights |> 
+  select(where(is.character))
+```
+  - rename with select:
+```{r select-rename}
+flights |> 
+  select(tail_num = tailnum)
+```
+
 ### `rename()`
+- changes column names/headers
+  - to rename while keeping all rows, use `rename()` instead of `select()`
+```{r rename}
+flights |> 
+  rename(tail_num = tailnum)
+```
+
 ### `relocate()`
-### `Exercises()`
+- changes column position
+  - by default, `relocate()` moves variables to the front/left
+  - you may also use `.before` and `.after` to determine placement
+```{r}
+flights |> 
+  relocate(time_hour, air_time)
+flights |> 
+  relocate(year:dep_time, .after = time_hour)
+flights |> 
+  relocate(starts_with("arr"), .before = dep_time)
+```
+
+### Exercises
+#### 1 Compare `dep_time`, `sched_dep_time`, and `dep_delay`. How would you expect those three numbers to be related?
+`sched_dep_time` + `dep_delay` = `dep_time`
+`dep_time` - `sched_dep_time` = `dep_delay`
+`dep_time` - `dep_delay` = `sched_dep_time`
+
+#### 2 Brainstorm as many ways as possible to select `dep_time`, `dep_delay`, `arr_time`, and `arr_delay` from flights.
+```{r}
+flights |> 
+  select(ends_with("time"), 
+         ends_with("delay"), 
+         -starts_with("sched"), 
+         -starts_with("air"))
+flights |> 
+  select(dep_time:arr_delay, 
+         -starts_with("sched"), 
+         -starts_with("air"))
+```
+
+
+#### 3 What happens if you specify the name of the same variable multiple times in a `select()` call?
+```{r}
+flights |> 
+  select("year", "year", "year")
+```
+It only selects the column once.
+
+
+#### 4 What does the `any_of()` function do? Why might it be helpful in conjunction with this vector?
+```{r}
+variables <- c("year", "month", "day", "dep_delay", "arr_delay")
+
+flights |> 
+  select(any_of(variables))
+```
+`any_of()`takes all the strings passed to it and finds the columns with those names, returning all that exist without throwing errors for those missing.
+
+
+#### 5 Does the result of running the following code surprise you? How do the select helpers deal with upper and lower case by default? How can you change that default?
+```{r}
+flights |> select(contains("TIME"))
+```
+
+#### 6 Rename `air_time` to `air_time_min` to indicate units of measurement and move it to the beginning of the data frame.
+```{r}
+flights |> 
+  rename(air_time_min = air_time) |> 
+  relocate(air_time_min)
+```
+
+
+#### 7 Why doesn’t the following work, and what does the error mean?
+```{r}
+flights |> 
+  select(tailnum) |> 
+  arrange(arr_delay)
+```
+The code doesn't work because the select drops the other columns, including arr_delay; the error means that the non-existant column cannot be found in the new, smaller data frame.
 
 ## The pipe
 ## Groups
