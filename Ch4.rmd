@@ -536,3 +536,29 @@ df |>
 ```
 
 ## Case study
+The case study focuses on baseball daya from **Lahman**
+- we will compare proportion of player `H`its vs their times `AB` (At Bat):
+```{r}
+batters <- Lahman::Batting |> 
+  group_by(playerID) |> 
+  summarize(
+    performance = sum(H, na.rm = TRUE) / sum(AB, na.rm = TRUE),
+    n = sum(AB, na.rm = TRUE)
+  )
+batters
+```
+Below we will plot the performance against at bat count; note two things:
+  1. Variation in `performance` is larger with fewer opportunities at bat (law of large numbers)
+  2. positive correlation between `performance` and `n` - teams put better batters at bat more.
+```{r}
+batters |> 
+  filter(n > 100) |> 
+  ggplot(aes(x = n, y = performance)) +
+  geom_point(alpha = 1 / 10) +
+  geom_smooth(se = FALSE)
+```
+```{r}
+batters |> 
+  arrange(desc(performance))
+```
+ - note that higher performance scores in a ranking are dominated by people with fewer at-bats who happened to get hits on those at-bats; not necessarily the best players.
