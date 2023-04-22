@@ -1,0 +1,251 @@
+---
+title: "Chapter 6 Notes and Exercises"
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Setup
+```{r}
+library(tidyverse)
+```
+## Tidy Data
+- Tidy datasets follow three rules:
+  1. Each variable is a column (each column a variable)
+  2. Each observation is a row (each row an observation)
+  3. Each value is a sell (each cell a single value)
+- Tidy datasets have two major advantages:
+  1. consistency in data structure
+  2. placing variables in columns takes advantage of vectorization.
+- Tidy data structure is the defining element of the tidyverse - all tidyverse packages, by definition, work with tidy data.
+
+```{r demo}
+# Rate per 10,000 of TB
+table1 |> 
+  mutate(rate = cases / population * 10000)
+
+# Compute total cases per year
+table1 |> 
+  group_by(year) |> 
+  summarize(total_cases = sum(cases))
+
+# Visualize changes over time
+ggplot(table1, aes(x = year, y = cases)) +
+  geom_line(aes(group = country), color = "grey50") +
+  geom_point(aes(color = country, shape = country)) +
+  scale_x_continuous(breaks = c(1999, 2000)) # x-axis breaks at 1999 and 2000
+```
+### Exercises
+#### 1. For each of the sample tables, describe what each observation and each column represents.
+In table2, each observation is a country/year/type combination, resulting in each country being repeated four times when it should only be twice (one for each year).
+the type column contains two variables - the case variable, and the population variable. The count column contains the value for each variable for each observation.
+
+This will require a pivot_wider() call as demonstrated in exercise 2, code-block 1.
+
+In table3, each observation is a country/year pair,the year column is correct, but rate is a composite variable title masking that the cells in the rate column contain two variables - case, and population - separated by a / character.
+
+We will need to separate on the `/` character in rate, to plug it into a case column and population column.
+#### 2. Sketch out the process you’d use to calculate the rate for table2 and table3. You will need to perform four operations
+```{r table2}
+table2 |> 
+  pivot_wider(
+    names_from = "type",
+    values_from = "count"
+  ) |> 
+  mutate(rate = cases/population * 100000)
+```
+```{r table3}
+table3 |> 
+  separate(
+    col = rate,
+    into = c("cases", "population")
+  ) |> mutate(
+    cases = parse_number(cases), 
+    population = parse_number(population), 
+    rate = cases/population * 100000)
+```
+
+
+## Lengthening Data
+- Most data is untidy
+  1. often, it is structure to make data entry easier
+  2. Tidy data principles are not a widely implemented set of basic principles
+
+- Often, the first step to tidying is **pivot**ing the data.
+- `tidyr` provides two **pivot** functions:
+  1. `pivot_longer()`
+  2. `pivot_wider()`
+
+### Data in column names
+The `billboard` dataset contains billboard hits from 2000:
+```{r billboard}
+billboard
+```
+- each observation is a song
+  - column 1 is artist
+  - column 2 is track
+  - column 3 is date.entered
+  - remaining columns are the song rank for each of 76 weeks
+```{r tidy-billboard}
+billboard_longer <- billboard |> pivot_longer(
+  cols = starts_with("wk"), # column to be pivoted
+  names_to = "week", # name of the variable stored in the column name
+  values_to = "rank", # names the variable stored in the cell values
+  values_drop_na = TRUE # drop NAs introduced by the pivot
+) |> 
+  mutate(
+    week = parse_number(week) # convert week variable to number instead of string
+  )
+```
+```{r}
+billboard_longer |> 
+  ggplot(aes(x = week, y = rank, group = track)) + 
+  geom_line(alpha = 0.25) + 
+  scale_y_reverse()
+```
+
+### How Pivoting Works
+```{r}
+df <- tribble(
+  ~ id, ~bp1, ~bp2,
+  "A",   100,  120,
+  "B",   140,  115,
+  "C",   120, 125
+)
+```
+
+We want this dataset to have three variables:
+ - `id` (already exists)
+ - `measurement` (column names)
+ - `value` (cell values)
+```{r}
+df |> 
+  pivot_longer(
+    cols = bp1:bp2,
+    names_to = "measurement",
+    values_to = "value")
+```
+  
+- The column names are added to a new variable, defined by `names_to`
+  - they are each repeated one time for each row in the original dataset
+- The cell values are added to a new variable, defined by `values_to`
+  - they are unwound row by row, looping around.
+  
+### Many variables in column names
+Some datasets are more complicated - a column name may have more information embedded than one variable
+```{r}
+who2
+```
+- country and year are individual variables
+- following variables have a format of XX_y_NNNN
+  - the first portion is a variable for diagnostic method (sp, rel, or ep)
+  - the second portion is a variable for sex/gender (m or f)
+  - the third portion is a agerange band - 014 is 0 to 14; 1524 is 15-24
+This breaks down to 6 variables measured in each observation:
+  1. country
+  2. year
+  3. diagnostic method
+  4. gender
+  5. age range
+  6. count of patients per variable (cell values)
+```{r}
+who2 |> 
+  pivot_longer(
+    cols = !(country:year), # everything but country and year because they're fine
+    names_to = c("diagnosis", "gender", "age"),
+    names_sep = "_", # in the name, each category is separated by underscore
+    values_to = "count", # we're generating a count
+  )
+```
+
+### Data and variable names in column headers
+```{r}
+household
+```
+household has the following variables:
+  - family (observation number)
+  - dob (date of birth)
+  - name (child name)
+  - child (first or second, 1 or 2)
+the last three are all embedded in the column headings
+- For this, we use `.value` in the `names_to` argument:
+  - this tells `names_to` that the first component should stay as a variable/column header for its own variable
+```{r}
+household |> 
+  pivot_longer(
+    cols = !family,
+    names_to = c(".value", "child"), # keeps dob variable, create child variable
+    names_sep = "_",
+    values_drop_na = TRUE
+  )
+```
+## Widening Data
+- `pivot_wider()` increases columns and reduces rows
+  - it helps gather an observation that is spread across multiple rows
+`cms_patient_experience` collects patient experience of Medicare and Medicaid
+```{r}
+cms_patient_experience
+```
+
+- core unit is organization; each org is spread across six rows
+  - each row is a measurement taken for the org
+```{r}
+cms_patient_experience |> 
+  pivot_wider(
+    names_from = measure_cd,
+    values_from = prf_rate
+  )
+```
+Let's pivot:
+```{r}
+cms_patient_experience |> 
+  pivot_wider(
+    id_cols = starts_with("org"), # identifies the column containing observation ids
+    names_from = measure_cd, # column(s) containing column headers to use
+    values_from = prf_rate # column(s) to get cell values from
+  )
+```
+### How does `pivot_wider()` work?
+
+```{r}
+df <- tribble(
+  ~id, ~measurement, ~value,
+  "A",        "bp1",    100,
+  "B",        "bp1",    140,
+  "B",        "bp2",    115,
+  "A",        "bp2",    120,
+  "A",        "bp3",    105
+)
+
+df |> pivot_wider(
+  names_from = measurement,
+  values_from = value
+)
+```
+
+Behind the scenes, it operates by finding the distinct entries to use as titles
+- it pulls them as a vector to be plugged in to the later
+```{r}
+df |> 
+  distinct(measurement) |> 
+  pull()
+```
+It takes all columns not going into the new names or values and finds the distinct entries to determine the rows/observations:
+```{r}
+df |> 
+  select(-measurement, -value) |> 
+  distinct()
+```
+
+It combines the two to make an empty data frame:
+```{r}
+df |> 
+  select(-measurement, -value) |> 
+  distinct() |> 
+  mutate(bp1 = NA, bp2 = NA, bp3 = NA)
+```
+
+It then fills in the cells with the missing values.
